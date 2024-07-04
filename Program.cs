@@ -59,10 +59,19 @@ System.Console.WriteLine(repo.Head.Tip.Message);
 //cliwrap test
 //todo: test if cliwrap works on local machine
 CommandResult result = await Cli.Wrap("git").WithArguments("add --all").ExecuteAsync();
+if (result.IsSuccess)
+{
+    result = await Cli.Wrap("git").WithArguments("commit -m \"Automated commit by the application\"").ExecuteAsync();
+    if (result.IsSuccess)
+    {
+        result = await Cli.Wrap("git").WithArguments("push origin master").ExecuteAsync();
+        if (result.IsSuccess)
+        {
+            System.Console.WriteLine("Successfully added, committed and pushed");
+        }
+    }
+}
 
-result = await Cli.Wrap("git").WithArguments("commit -m \"Automated commit by the application\"").ExecuteAsync();
-
-result = await Cli.Wrap("git").WithArguments("push origin master").ExecuteAsync();
 
 
 //todo: if works on local, try to get git on azure machine
