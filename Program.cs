@@ -64,11 +64,12 @@ if (result.IsSuccess)
     result = await Cli.Wrap("git").WithArguments("commit -m \"Automated commit by the application\"").ExecuteAsync();
     if (result.IsSuccess)
     {
+        /*
         result = await Cli.Wrap("git").WithArguments("push origin master").ExecuteAsync();
         if (result.IsSuccess)
         {
             System.Console.WriteLine("Successfully added, committed and pushed");
-        }
+        }*/
     }
 }
 
