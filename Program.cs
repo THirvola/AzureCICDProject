@@ -61,15 +61,25 @@ System.Console.WriteLine(repo.Head.Tip.Message);
 CommandResult result = await Cli.Wrap("git").WithArguments("add --all").ExecuteAsync();
 if (result.IsSuccess)
 {
-    result = await Cli.Wrap("git").WithArguments("commit -m \"Automated commit by the application\"").ExecuteAsync();
-    if (result.IsSuccess)
+    result = await Cli.Wrap("git").WithArguments(["commit", "-m", "Automated commit by the application"]).WithValidation(CommandResultValidation.None).ExecuteAsync();
+    if (result.IsSuccess || result.ExitCode == 1)
     {
+        System.Console.WriteLine("successfull commit: " + result.IsSuccess);
+
+        System.Console.WriteLine("exit code: " + result.ExitCode);
         /*
         result = await Cli.Wrap("git").WithArguments("push origin master").ExecuteAsync();
         if (result.IsSuccess)
         {
-            System.Console.WriteLine("Successfully added, committed and pushed");
+            System.Console.WriteLine("Successfully added, committed and pushed to repository");
         }*/
+
+    }
+    else
+    {
+        System.Console.WriteLine("failed commit");
+
+        System.Console.WriteLine("exit code: " + result.ExitCode);
     }
 }
 
