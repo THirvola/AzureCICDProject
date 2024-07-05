@@ -1,7 +1,80 @@
-﻿@page "/"
+@using CliWrap;
+@page "/"
+@rendermode InteractiveServer
 
 <PageTitle>Home</PageTitle>
 
-<h1>Hello, world!</h1>
+<h1>CI/CD demonstration</h1>
 
-Welcome to your new app.
+This is a simple app to demonstrate Continuous integration/deployment (CI/CD).
+<br />
+
+<br/>
+Pressing the button below will have the following effect:
+<br />
+1. Randomize a new number between 1 and 1000
+<br />
+2. Change the value of the number in the source code itself
+<br />
+3. Commit changes to the page and push that to Github
+<br />
+4. Github will start an automatic build and deployment of the app
+<br />
+5. After a while, you can refresh the page and notice how everyone can see the number YOU generated
+<br />
+
+<br />
+There is a 5-minute cooldown on the button.
+<br />
+
+<h2>Current number: @currentNumber</h2>
+<i>Generated at @lastGenerated</i>
+<br />
+<br />
+
+<button class="btn btn-primary" @onclick="ChangeNumber">Generate!</button>
+
+@code {
+    private int currentNumber = 949;
+    private string lastGenerated = "2024-07-05 15:51:00 UTC";
+
+    private async void ChangeNumber()
+    {
+        //Change the number
+        currentNumber = System.Random.Shared.Next(1000);
+        lastGenerated = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss UTC", System.Globalization.CultureInfo.InvariantCulture);
+        if (File.Exists("./Components/Pages/Home.razor"))
+        {
+            string fileContents = File.ReadAllText("./Components/Pages/Home.razor");
+            if (fileContents != null && fileContents.Length > 0)
+            {
+                int currentNumberDefinition = fileContents.IndexOf("currentNumber = ");
+
+                int endOfLine = fileContents.IndexOf(";", currentNumberDefinition);
+                int lastGeneratedDefinition = fileContents.IndexOf("lastGenerated = ", endOfLine);
+                int lastGeneratedEndOfLine = fileContents.IndexOf(";", lastGeneratedDefinition);
+
+                string fileStart = fileContents.Substring(0, currentNumberDefinition + 16);
+                string numberToDate = fileContents.Substring(endOfLine, lastGeneratedDefinition - endOfLine + 16) + "\"";
+                string endOfFile = "\"" + fileContents.Substring(lastGeneratedEndOfLine);
+                string newFileContents = fileStart + currentNumber + numberToDate + lastGenerated + endOfFile;
+                File.WriteAllText("./Components/Pages/Home.razor", newFileContents);
+
+                CommandResult result = await Cli.Wrap("git").WithArguments("init").WithValidation(CommandResultValidation.None).ExecuteAsync();
+                result = await Cli.Wrap("git").WithArguments("config user.name THirvola").WithValidation(CommandResultValidation.None).ExecuteAsync();
+                result = await Cli.Wrap("git").WithArguments("config user.email thirvola@gmail.com").WithValidation(CommandResultValidation.None).ExecuteAsync();
+                result = await Cli.Wrap("git").WithArguments("add --all").WithValidation(CommandResultValidation.None).ExecuteAsync();
+                result = await Cli.Wrap("git").WithArguments(["commit", "-m", "Change number to " + currentNumber]).WithValidation(CommandResultValidation.None).ExecuteAsync();
+                result = await Cli.Wrap("git").WithArguments("remote add origin https://github.com/THirvola/AzureCICDProject.git").WithValidation(CommandResultValidation.None).ExecuteAsync();
+                result = await Cli.Wrap("git").WithArguments("push origin master").WithValidation(CommandResultValidation.None).ExecuteAsync();
+
+
+
+            }
+        }
+        else
+        {
+            Console.WriteLine("Could not find the razor page. Try again later.");
+        }
+    }
+}
