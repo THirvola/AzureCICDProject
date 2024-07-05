@@ -40,12 +40,26 @@ There is a 5-minute cooldown on the button.
 
     private async void ChangeNumber()
     {
-        //Change the number
+        //checking if it's been 5 minutes yet
+        DateTime previousGeneration = DateTime.Parse(lastGenerated.Substring(0, lastGenerated.Length-3), System.Globalization.CultureInfo.InvariantCulture);
+        if (DateTime.UtcNow - previousGeneration < new TimeSpan(0, 5, 0))
+            return;
+
+        //Change the number and date locally
         currentNumber = System.Random.Shared.Next(1000);
         lastGenerated = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss UTC", System.Globalization.CultureInfo.InvariantCulture);
-        if (File.Exists("./Components/Pages/Home.razor"))
+        
+        //Creating source if it doesn't exist already
+        if (!Directory.Exists("./SourceForGit"))
+            Directory.CreateDirectory("./SourceForGit");
+
+        //Cloning the github repository to the source folder
+        CommandResult result = await Cli.Wrap("git").WithArguments("clone https://github.com/THirvola/AzureCICDProject.git").WithWorkingDirectory("./SourceForGit").WithValidation(CommandResultValidation.None).ExecuteAsync();
+
+
+        if (result.IsSuccess && File.Exists("./SourceForGit/AzureCICDProject/Components/Pages/Home.razor"))
         {
-            string fileContents = File.ReadAllText("./Components/Pages/Home.razor");
+            string fileContents = File.ReadAllText("./SourceForGit/AzureCICDProject/Components/Pages/Home.razor");
             if (fileContents != null && fileContents.Length > 0)
             {
                 int currentNumberDefinition = fileContents.IndexOf("currentNumber = ");
@@ -58,9 +72,9 @@ There is a 5-minute cooldown on the button.
                 string numberToDate = fileContents.Substring(endOfLine, lastGeneratedDefinition - endOfLine + 16) + "\"";
                 string endOfFile = "\"" + fileContents.Substring(lastGeneratedEndOfLine);
                 string newFileContents = fileStart + currentNumber + numberToDate + lastGenerated + endOfFile;
-                File.WriteAllText("./Components/Pages/Home.razor", newFileContents);
+                File.WriteAllText("./SourceForGit/AzureCICDProject/Components/Pages/Home.razor", newFileContents);
 
-                CommandResult result = await Cli.Wrap("git").WithArguments("init").WithValidation(CommandResultValidation.None).ExecuteAsync();
+                result = await Cli.Wrap("git").WithArguments("init").WithValidation(CommandResultValidation.None).ExecuteAsync();
                 result = await Cli.Wrap("git").WithArguments("config user.name THirvola").WithValidation(CommandResultValidation.None).ExecuteAsync();
                 result = await Cli.Wrap("git").WithArguments("config user.email thirvola@gmail.com").WithValidation(CommandResultValidation.None).ExecuteAsync();
                 result = await Cli.Wrap("git").WithArguments("add --all").WithValidation(CommandResultValidation.None).ExecuteAsync();
