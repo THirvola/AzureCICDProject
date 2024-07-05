@@ -54,7 +54,7 @@ There is a 5-minute cooldown on the button.
             Directory.CreateDirectory("./SourceForGit");
 
         //Cloning the github repository to the source folder
-        CommandResult result = await Cli.Wrap("git").WithArguments("clone https://github.com/THirvola/AzureCICDProject.git").WithWorkingDirectory("./site/wwwroot/SourceForGit").WithValidation(CommandResultValidation.None).ExecuteAsync();
+        CommandResult result = await Cli.Wrap("git").WithArguments("clone https://github.com/THirvola/AzureCICDProject.git").WithWorkingDirectory(Directory.GetCurrentDirectory() + "/SourceForGit").WithValidation(CommandResultValidation.None).ExecuteAsync();
 
 
         if (result.IsSuccess && File.Exists("./SourceForGit/AzureCICDProject/Components/Pages/Home.razor"))
@@ -74,11 +74,11 @@ There is a 5-minute cooldown on the button.
                 string newFileContents = fileStart + currentNumber + numberToDate + lastGenerated + endOfFile;
                 File.WriteAllText("./site/wwwroot/SourceForGit/AzureCICDProject/Components/Pages/Home.razor", newFileContents);
 
-                result = await Cli.Wrap("git").WithArguments("config user.name THirvola").WithWorkingDirectory("./site/wwwroot/SourceForGit/AzureCICDProject").ExecuteAsync();
-                result = await Cli.Wrap("git").WithArguments("config user.email thirvola@gmail.com").WithWorkingDirectory("./site/wwwroot/SourceForGit/AzureCICDProject").ExecuteAsync();
-                result = await Cli.Wrap("git").WithArguments("add --all").WithWorkingDirectory("./site/wwwroot/SourceForGit/AzureCICDProject").ExecuteAsync();
-                result = await Cli.Wrap("git").WithArguments(["commit", "-m", "Change number to " + currentNumber]).WithWorkingDirectory("./site/wwwroot/SourceForGit/AzureCICDProject").WithValidation(CommandResultValidation.None).ExecuteAsync();
-                result = await Cli.Wrap("git").WithArguments("push origin master").WithWorkingDirectory("./site/wwwroot/SourceForGit/AzureCICDProject").ExecuteAsync();
+                result = await Cli.Wrap("git").WithArguments("config user.name THirvola").WithWorkingDirectory(Directory.GetCurrentDirectory() + "/SourceForGit").ExecuteAsync();
+                result = await Cli.Wrap("git").WithArguments("config user.email thirvola@gmail.com").WithWorkingDirectory(Directory.GetCurrentDirectory() + "/SourceForGit").ExecuteAsync();
+                result = await Cli.Wrap("git").WithArguments("add --all").WithWorkingDirectory(Directory.GetCurrentDirectory() + "/SourceForGit").ExecuteAsync();
+                result = await Cli.Wrap("git").WithArguments(["commit", "-m", "Change number to " + currentNumber]).WithWorkingDirectory(Directory.GetCurrentDirectory() + "/SourceForGit").WithValidation(CommandResultValidation.None).ExecuteAsync();
+                result = await Cli.Wrap("git").WithArguments("push origin master").WithWorkingDirectory(Directory.GetCurrentDirectory() + "/SourceForGit").ExecuteAsync();
             }
         }
         else
