@@ -74,11 +74,11 @@ There is a 5-minute cooldown on the button.
                 string newFileContents = fileStart + currentNumber + numberToDate + lastGenerated + endOfFile;
                 File.WriteAllText("./SourceForGit/AzureCICDProject/Components/Pages/Home.razor", newFileContents);
 
-                result = await Cli.Wrap("git").WithArguments("config user.name THirvola").WithWorkingDirectory("./SourceForGit").WithValidation(CommandResultValidation.None).ExecuteAsync();
-                result = await Cli.Wrap("git").WithArguments("config user.email thirvola@gmail.com").WithWorkingDirectory("./SourceForGit").WithValidation(CommandResultValidation.None).ExecuteAsync();
-                result = await Cli.Wrap("git").WithArguments("add --all").WithWorkingDirectory("./SourceForGit").WithValidation(CommandResultValidation.None).ExecuteAsync();
-                result = await Cli.Wrap("git").WithArguments(["commit", "-m", "Change number to " + currentNumber]).WithWorkingDirectory("./SourceForGit").WithValidation(CommandResultValidation.None).ExecuteAsync();
-                result = await Cli.Wrap("git").WithArguments("push origin master").WithWorkingDirectory("./SourceForGit").WithValidation(CommandResultValidation.None).ExecuteAsync();
+                result = await Cli.Wrap("git").WithArguments("config user.name THirvola").WithWorkingDirectory("./SourceForGit").ExecuteAsync();
+                result = await Cli.Wrap("git").WithArguments("config user.email thirvola@gmail.com").WithWorkingDirectory("./SourceForGit").ExecuteAsync();
+                result = await Cli.Wrap("git").WithArguments("add --all").WithWorkingDirectory("./SourceForGit").ExecuteAsync();
+                result = await Cli.Wrap("git").WithArguments(["commit", "-m", "Change number to " + currentNumber]).WithWorkingDirectory("./SourceForGit").ExecuteAsync();
+                result = await Cli.Wrap("git").WithArguments("push origin master").WithWorkingDirectory("./SourceForGit").ExecuteAsync();
 
 
 
