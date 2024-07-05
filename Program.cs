@@ -58,6 +58,7 @@ System.Console.WriteLine(repo.Head.Tip.Message);
 */
 //cliwrap test
 //todo: test if cliwrap works on local machine
+/*
 CommandResult result = await Cli.Wrap("git").WithArguments("add --all").ExecuteAsync();
 if (result.IsSuccess)
 {
@@ -82,7 +83,7 @@ if (result.IsSuccess)
         System.Console.WriteLine("exit code: " + result.ExitCode);
     }
 }
-
+*/
 
 
 //todo: if works on local, try to get git on azure machine
