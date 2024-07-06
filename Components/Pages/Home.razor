@@ -33,59 +33,121 @@ There is a 5-minute cooldown on the button.
 <br />
 
 <button class="btn btn-primary" @onclick="ChangeNumber">Generate!</button>
+<br />
+<br />
+<p>Log:<br/>@markupLog</p>
 
 @code {
-    private int currentNumber = 718;
+    private int currentNumber = -1;
     private string lastGenerated = "2024-07-05 17:00:05 UTC";
+    private string logString = "";
+    private MarkupString markupLog = (MarkupString)"";
 
-    private async void ChangeNumber()
+    private void Log(string line, bool clear = false)
+    {
+        if (clear)
+            logString = "";
+        logString += line;
+        markupLog = (MarkupString)logString;
+    }
+
+    private async Task ChangeNumber()
     {
         //checking if it's been 5 minutes yet
         DateTime previousGeneration = DateTime.Parse(lastGenerated.Substring(0, lastGenerated.Length-4), System.Globalization.CultureInfo.InvariantCulture);
         if (DateTime.UtcNow - previousGeneration < new TimeSpan(0, 5, 0))
+        {
+            Log("The button is on cooldown until " + previousGeneration.AddMinutes(5).ToString("yyyy-MM-dd HH:mm:ss UTC", System.Globalization.CultureInfo.InvariantCulture) + "<br />", true);
             return;
-
-        //Change the number and date locally
-        //currentNumber = System.Random.Shared.Next(1000);
-        lastGenerated = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss UTC", System.Globalization.CultureInfo.InvariantCulture);
-
-        //Creating source if it doesn't exist already
-        if (!Directory.Exists("./SourceForGit"))
-            Directory.CreateDirectory("./SourceForGit");
-
-
-        //Cloning the github repository to the source folder
-        CommandResult result = await Cli.Wrap("git").WithArguments("clone https://github.com/THirvola/AzureCICDProject.git").WithWorkingDirectory("./SourceForGit").WithValidation(CommandResultValidation.None).ExecuteAsync();
-
-        currentNumber = result.ExitCode;
-
-        if (result.IsSuccess && File.Exists("./SourceForGit/AzureCICDProject/Components/Pages/Home.razor"))
-        {
-            string fileContents = File.ReadAllText("./SourceForGit/AzureCICDProject/Components/Pages/Home.razor");
-            if (fileContents != null && fileContents.Length > 0)
-            {
-                int currentNumberDefinition = fileContents.IndexOf("currentNumber = ");
-
-                int endOfLine = fileContents.IndexOf(";", currentNumberDefinition);
-                int lastGeneratedDefinition = fileContents.IndexOf("lastGenerated = ", endOfLine);
-                int lastGeneratedEndOfLine = fileContents.IndexOf(";", lastGeneratedDefinition);
-
-                string fileStart = fileContents.Substring(0, currentNumberDefinition + 16);
-                string numberToDate = fileContents.Substring(endOfLine, lastGeneratedDefinition - endOfLine + 16) + "\"";
-                string endOfFile = "\"" + fileContents.Substring(lastGeneratedEndOfLine);
-                string newFileContents = fileStart + currentNumber + numberToDate + lastGenerated + endOfFile;
-                File.WriteAllText("./SourceForGit/AzureCICDProject/Components/Pages/Home.razor", newFileContents);
-                /*
-                result = await Cli.Wrap("git").WithArguments("config user.name THirvola").WithWorkingDirectory("./SourceForGit").ExecuteAsync();
-                result = await Cli.Wrap("git").WithArguments("config user.email thirvola@gmail.com").WithWorkingDirectory("./SourceForGit").ExecuteAsync();
-                result = await Cli.Wrap("git").WithArguments("add --all").WithWorkingDirectory("./SourceForGit").ExecuteAsync();
-                result = await Cli.Wrap("git").WithArguments(["commit", "-m", "Change number to " + currentNumber]).WithWorkingDirectory("./SourceForGit").WithValidation(CommandResultValidation.None).ExecuteAsync();
-                result = await Cli.Wrap("git").WithArguments("push origin master").WithWorkingDirectory("./SourceForGit").ExecuteAsync();*/
-            }
         }
-        else
+
+        Log("Starting the process <br />", true);
+
+        try
         {
-            Console.WriteLine("Could not find the razor page. Try again later.");
+            //Creating source if it doesn't exist already
+            if (!Directory.Exists("./SourceForGit"))
+            {
+                Log("Creating new directory for cloning <br />");
+                Directory.CreateDirectory("./SourceForGit");
+
+                Log("Cloning the source from https://github.com/THirvola/AzureCICDProject.git <br />");
+
+                //Cloning the github repository to the source folder
+                CommandResult cloneResult = await Cli.Wrap("git").WithArguments("clone https://github.com/THirvola/AzureCICDProject.git").WithWorkingDirectory("./SourceForGit").WithValidation(CommandResultValidation.None).ExecuteAsync();
+
+                Log("Cloning successful: " + cloneResult.IsSuccess + ", with exit code " + cloneResult.ExitCode + " <br />");
+            }
+            else
+            {
+                Log("Directory for repo exists <br />");
+            }
+
+            if (File.Exists("./SourceForGit/AzureCICDProject/Components/Pages/Home.razor"))
+            {
+                Log("Reading the current source for the page<br/>");
+                string fileContents = File.ReadAllText("./SourceForGit/AzureCICDProject/Components/Pages/Home.razor");
+                if (fileContents != null && fileContents.Length > 0)
+                {
+                    Log("Generating a new number<br/>");
+
+                    //Change the number and date locally
+                    currentNumber = System.Random.Shared.Next(1000);
+                    lastGenerated = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss UTC", System.Globalization.CultureInfo.InvariantCulture);
+
+                    Log("Changing the number in source to " + currentNumber + "<br/>");
+
+                    int currentNumberDefinition = fileContents.IndexOf("currentNumber = ");
+                    int endOfLine = fileContents.IndexOf(";", currentNumberDefinition);
+                    int lastGeneratedDefinition = fileContents.IndexOf("lastGenerated = ", endOfLine);
+                    int lastGeneratedEndOfLine = fileContents.IndexOf(";", lastGeneratedDefinition);
+
+                    string fileStart = fileContents.Substring(0, currentNumberDefinition + 16);
+                    string numberToDate = fileContents.Substring(endOfLine, lastGeneratedDefinition - endOfLine + 16) + "\"";
+                    string endOfFile = "\"" + fileContents.Substring(lastGeneratedEndOfLine);
+                    string newFileContents = fileStart + currentNumber + numberToDate + lastGenerated + endOfFile;
+
+                    File.WriteAllText("./SourceForGit/AzureCICDProject/Components/Pages/Home.razor", newFileContents);
+
+                    Log("Setting up git config in the cloned directory<br/>");
+
+                    CommandResult result = await Cli.Wrap("git").WithArguments("config user.name THirvola").WithWorkingDirectory("./SourceForGit/AzureCICDProject").ExecuteAsync();
+                    
+                    Log("Configured user name: " + result.IsSuccess + ", with exit code " + result.ExitCode + "<br/>");
+
+                    CommandResult result1 = await Cli.Wrap("git").WithArguments("config user.email thirvola@gmail.com").WithWorkingDirectory("./SourceForGit/AzureCICDProject").ExecuteAsync();
+
+                    Log("Configured email: " + result1.IsSuccess + ", with exit code " + result1.ExitCode + "<br/>"); 
+                    
+                    CommandResult result2 = await Cli.Wrap("git").WithArguments("add --all").WithWorkingDirectory("./SourceForGit/AzureCICDProject").ExecuteAsync();
+
+                    Log("Staged changes: " + result2.IsSuccess + ", with exit code " + result2.ExitCode + "<br/>"); 
+                    
+                    CommandResult result3 = await Cli.Wrap("git").WithArguments(["commit", "-m", "Change number to " + currentNumber]).WithWorkingDirectory("./SourceForGit/AzureCICDProject").WithValidation(CommandResultValidation.None).ExecuteAsync();
+
+                    Log("Committed changes: " + result3.IsSuccess + ", with exit code " + result3.ExitCode + "<br/>"); 
+                    
+                    CommandResult result4 = await Cli.Wrap("git").WithArguments("push origin master").WithWorkingDirectory("./SourceForGit/AzureCICDProject").ExecuteAsync();
+
+                    Log("Pushed to github: " + result4.IsSuccess + ", with exit code " + result4.ExitCode + "<br/>");
+
+                    if (result4.IsSuccess)
+                        Log("Successfully pushed to repository. Automatic building and deployment has started in GitHub.<br/>");
+                }
+                else
+                {
+                    Log("Error: Could not find page source<br/>");
+                    Log("Attempting to remove repository folder<br/>");
+                    Directory.Delete("./SourceForGit", true);
+                }
+            }
+            else
+            {
+                Log("Error: Could not find the razor page.<br/>");
+            }
+        } catch (Exception e)
+        {
+            Log("Error: " + e.Message + "<br/>");
         }
     }
 }
