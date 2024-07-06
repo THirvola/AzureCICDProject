@@ -38,8 +38,8 @@ There is a 5-minute cooldown on the button.
 <p>Log:<br/>@markupLog</p>
 
 @code {
-    private int currentNumber = -1;
-    private string lastGenerated = "2024-07-05 17:00:05 UTC";
+    private int currentNumber = 137;
+    private string lastGenerated = "2024-07-06 18:32:50 UTC";
     private string logString = "";
     private MarkupString markupLog = (MarkupString)"";
 
@@ -111,27 +111,33 @@ There is a 5-minute cooldown on the button.
 
                     Log("Setting up git config in the cloned directory<br/>");
 
-                    CommandResult result = await Cli.Wrap("git").WithArguments("config user.name THirvola").WithWorkingDirectory("./SourceForGit/AzureCICDProject").ExecuteAsync();
-                    
-                    Log("Configured user name: " + result.IsSuccess + ", with exit code " + result.ExitCode + "<br/>");
+                    CommandResult result = await Cli.Wrap("git").WithArguments("config user.name THirvola").WithWorkingDirectory("./SourceForGit/AzureCICDProject").WithValidation(CommandResultValidation.None).ExecuteAsync();
 
-                    CommandResult result1 = await Cli.Wrap("git").WithArguments("config user.email thirvola@gmail.com").WithWorkingDirectory("./SourceForGit/AzureCICDProject").ExecuteAsync();
+                    Log("Configured user name with exit code " + result.ExitCode + "<br/>");
 
-                    Log("Configured email: " + result1.IsSuccess + ", with exit code " + result1.ExitCode + "<br/>"); 
-                    
-                    CommandResult result2 = await Cli.Wrap("git").WithArguments("add --all").WithWorkingDirectory("./SourceForGit/AzureCICDProject").ExecuteAsync();
+                    CommandResult result1 = await Cli.Wrap("git").WithArguments("config user.email thirvola@gmail.com").WithWorkingDirectory("./SourceForGit/AzureCICDProject").WithValidation(CommandResultValidation.None).ExecuteAsync();
 
-                    Log("Staged changes: " + result2.IsSuccess + ", with exit code " + result2.ExitCode + "<br/>"); 
-                    
+                    Log("Configured email with exit code " + result1.ExitCode + "<br/>"); 
+
+                    CommandResult result2 = await Cli.Wrap("git").WithArguments("add --all").WithWorkingDirectory("./SourceForGit/AzureCICDProject").WithValidation(CommandResultValidation.None).ExecuteAsync();
+
+                    Log("Staged changes with exit code " + result2.ExitCode + "<br/>"); 
+
                     CommandResult result3 = await Cli.Wrap("git").WithArguments(["commit", "-m", "Change number to " + currentNumber]).WithWorkingDirectory("./SourceForGit/AzureCICDProject").WithValidation(CommandResultValidation.None).ExecuteAsync();
 
-                    Log("Committed changes: " + result3.IsSuccess + ", with exit code " + result3.ExitCode + "<br/>"); 
-                    
-                    CommandResult result4 = await Cli.Wrap("git").WithArguments("push origin master").WithWorkingDirectory("./SourceForGit/AzureCICDProject").ExecuteAsync();
+                    Log("Committed changes with exit code " + result3.ExitCode + "<br/>");
 
-                    Log("Pushed to github: " + result4.IsSuccess + ", with exit code " + result4.ExitCode + "<br/>");
+                    string token = Environment.GetEnvironmentVariable("GIT_TOKEN")!;
+                    CommandResult result4 = await Cli.Wrap("git").WithArguments(["config", "--global", "credential.credentialStore", "dpapi"]).WithWorkingDirectory("./SourceForGit/AzureCICDProject").WithValidation(CommandResultValidation.None).ExecuteAsync();
+                    CommandResult result5 = await Cli.Wrap("git").WithArguments(["set-url", "origin", "https://username:" + token + "@github.com/THirvola/AzureCICDProject.git"]).WithWorkingDirectory("./SourceForGit/AzureCICDProject").WithValidation(CommandResultValidation.None).ExecuteAsync();
 
-                    if (result4.IsSuccess)
+                    Log("Prepared credentials for push");
+
+                    CommandResult result6 = await Cli.Wrap("git").WithArguments("push origin master").WithWorkingDirectory("./SourceForGit/AzureCICDProject").WithValidation(CommandResultValidation.None).ExecuteAsync();
+
+                    Log("Pushed to github with exit code " + result6.ExitCode + "<br/>");
+
+                    if (result6.IsSuccess)
                         Log("Successfully pushed to repository. Automatic building and deployment has started in GitHub.<br/>");
                 }
                 else
