@@ -81,6 +81,10 @@ There is a 5-minute cooldown on the button.
             else
             {
                 Log("Directory for repo exists <br />");
+
+                CommandResult pullResult = await Cli.Wrap("git").WithArguments("pull origin master").WithWorkingDirectory("./SourceForGit/AzureCICDProject").WithValidation(CommandResultValidation.None).ExecuteAsync();
+
+                Log("Pulled latest code with exit code: " + pullResult.ExitCode + " <br />");
             }
 
             if (File.Exists("./SourceForGit/AzureCICDProject/Components/Pages/Home.razor"))
@@ -129,9 +133,12 @@ There is a 5-minute cooldown on the button.
 
                     string token = Environment.GetEnvironmentVariable("GIT_TOKEN")!;
                     CommandResult result4 = await Cli.Wrap("git").WithArguments(["config", "--global", "credential.credentialStore", "dpapi"]).WithWorkingDirectory("./SourceForGit/AzureCICDProject").WithValidation(CommandResultValidation.None).ExecuteAsync();
-                    CommandResult result5 = await Cli.Wrap("git").WithArguments(["set-url", "origin", "https://username:" + token + "@github.com/THirvola/AzureCICDProject.git"]).WithWorkingDirectory("./SourceForGit/AzureCICDProject").WithValidation(CommandResultValidation.None).ExecuteAsync();
 
-                    Log("Prepared credentials for push");
+                    Log("Set credential config with exit code " + result4.ExitCode + " <br/>");
+
+                    CommandResult result5 = await Cli.Wrap("git").WithArguments(["remote", "set-url", "origin", "https://username:" + token + "@github.com/THirvola/AzureCICDProject.git"]).WithWorkingDirectory("./SourceForGit/AzureCICDProject").WithValidation(CommandResultValidation.None).ExecuteAsync();
+
+                    Log("Set remote with exit code " + result4.ExitCode + " <br/>");
 
                     CommandResult result6 = await Cli.Wrap("git").WithArguments("push origin master").WithWorkingDirectory("./SourceForGit/AzureCICDProject").WithValidation(CommandResultValidation.None).ExecuteAsync();
 
