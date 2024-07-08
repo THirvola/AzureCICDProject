@@ -43,6 +43,7 @@ There is a 5-minute cooldown on the button.
     private MarkupString workflowLog = (MarkupString)"";
     private string workflowLogString = "";
     private DateTime previousGeneration = DateTime.MinValue;
+    private string previousStatus = "completed";
     private string serverLogString = "";
     private MarkupString serverLog = (MarkupString)"";
     private readonly JsonSerializerOptions jsonOpts = new JsonSerializerOptions()
@@ -96,11 +97,11 @@ There is a 5-minute cooldown on the button.
             JsonElement latestRun = jsonRoot.GetProperty("workflow_runs")[0];
             Log("Latest workflow run:", false, true);
             Log("Number: " + latestRun.GetProperty("run_number").GetInt32(), false);
-            Log("Status: " + latestRun.GetProperty("status").GetString()!, false);
+            previousStatus = latestRun.GetProperty("status").GetString()!;
+            Log("Status: " + previousStatus, false);
             Log("Trigger commit: " + latestRun.GetProperty("display_title").GetString()!, false);
-            DateTime latestUpdate = DateTime.Parse(latestRun.GetProperty("updated_at").GetString()!, System.Globalization.CultureInfo.InvariantCulture).ToUniversalTime();
-            previousGeneration = latestUpdate;
-            Log("Updated: " + latestUpdate.ToString("yyyy-MM-dd HH:mm:ss UTC", System.Globalization.CultureInfo.InvariantCulture), false);
+            previousGeneration = DateTime.Parse(latestRun.GetProperty("updated_at").GetString()!, System.Globalization.CultureInfo.InvariantCulture).ToUniversalTime();
+            Log("Updated: " + previousGeneration.ToString("yyyy-MM-dd HH:mm:ss UTC", System.Globalization.CultureInfo.InvariantCulture), false);
         } catch
         {
             Log("Could not fetch workflow run log", false, true);
@@ -109,10 +110,19 @@ There is a 5-minute cooldown on the button.
 
     private async Task ChangeNumber()
     {
+        //Updating latest workflow run information
+        await UpdateWorkflowLog();
+
         //checking if it's been 5 minutes yet
         if (DateTime.UtcNow - previousGeneration < new TimeSpan(0, 5, 0))
         {
             Log("The button is on cooldown until " + previousGeneration.AddMinutes(5).ToString("yyyy-MM-dd HH:mm:ss UTC", System.Globalization.CultureInfo.InvariantCulture), true, true);
+            return;
+        }
+
+        if (previousStatus == "completed")
+        {
+            Log("The previous workflow has not completed yet.", true, true);
             return;
         }
 
