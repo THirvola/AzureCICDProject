@@ -39,7 +39,7 @@ There is a 5-minute cooldown on the button.
 <p>Server log: <br/>@serverLog</p>
 
 @code {
-    private int currentNumber = 706;
+    private int currentNumber = -1;
     private MarkupString workflowLog = (MarkupString)"";
     private string workflowLogString = "";
     private DateTime previousGeneration = DateTime.MinValue;
@@ -164,19 +164,15 @@ There is a 5-minute cooldown on the button.
 
                     //Change the number and date locally
                     currentNumber = System.Random.Shared.Next(1000);
-                    workflowLogString = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss UTC", System.Globalization.CultureInfo.InvariantCulture);
 
                     Log("Changing the number in source to " + currentNumber);
 
                     int currentNumberDefinition = fileContents.IndexOf("currentNumber = ");
                     int endOfLine = fileContents.IndexOf(";", currentNumberDefinition);
-                    int lastGeneratedDefinition = fileContents.IndexOf("lastGenerated = "2024-07-08 20:15:38 UTC";
-                    int lastGeneratedEndOfLine = fileContents.IndexOf(";", lastGeneratedDefinition);
 
                     string fileStart = fileContents.Substring(0, currentNumberDefinition + 16);
-                    string numberToDate = fileContents.Substring(endOfLine, lastGeneratedDefinition - endOfLine + 16) + "\"";
-                    string endOfFile = "\"" + fileContents.Substring(lastGeneratedEndOfLine);
-                    string newFileContents = fileStart + currentNumber + numberToDate + workflowLogString + endOfFile;
+                    string endOfFile = "\"" + fileContents.Substring(endOfLine);
+                    string newFileContents = fileStart + currentNumber + endOfFile;
 
                     File.WriteAllText("./SourceForGit/AzureCICDProject/Components/Pages/Home.razor", newFileContents);
                     
@@ -232,6 +228,6 @@ There is a 5-minute cooldown on the button.
             Log("Error: " + e.Message);
         }
 
-        UpdateWorkflowLog();
+        await UpdateWorkflowLog();
     }
 }
