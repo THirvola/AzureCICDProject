@@ -171,7 +171,7 @@ There is a 5-minute cooldown on the button.
                     int endOfLine = fileContents.IndexOf(";", currentNumberDefinition);
 
                     string fileStart = fileContents.Substring(0, currentNumberDefinition + 16);
-                    string endOfFile = "\"" + fileContents.Substring(endOfLine);
+                    string endOfFile = fileContents.Substring(endOfLine);
                     string newFileContents = fileStart + currentNumber + endOfFile;
 
                     File.WriteAllText("./SourceForGit/AzureCICDProject/Components/Pages/Home.razor", newFileContents);
