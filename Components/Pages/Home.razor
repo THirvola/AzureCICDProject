@@ -29,7 +29,7 @@ There is a 5-minute cooldown on the button.
 <br />
 
 <h2>Current number: @currentNumber</h2>
-<i>Workflow log: <br/>@workflowLogString</i>
+<i>@workflowLog</i>
 <br />
 <br />
 
@@ -48,6 +48,11 @@ There is a 5-minute cooldown on the button.
         {
             PropertyNameCaseInsensitive = true
         };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await UpdateWorkflowLog();
+    }
 
     private void Log(string line, bool server = true, bool clear = false)
     {
@@ -74,20 +79,31 @@ There is a 5-minute cooldown on the button.
     {
         var client = new HttpClient();
 
-        //Request headers
-        client.DefaultRequestHeaders.Add("User-Agent", "THirvola");
-        client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
+        try
+        {
 
-        //GET
-        HttpResponseMessage resp = await client.GetAsync("https://api.github.com/repos/THirvola/AzureCICDProject/actions/workflows/105888792/runs");
-        string respString = await resp.Content.ReadAsStringAsync();
 
-        //Parsing response
-        Stream responseStream = resp.Content.ReadAsStream();
-        JsonElement jsonRoot = JsonDocument.Parse(responseStream).RootElement;
-        Log(jsonRoot.GetProperty("workflow_runs")[0].GetProperty("display_title").GetString()!, false, true);
-        Log(DateTime.Parse(jsonRoot.GetProperty("workflow_runs")[0].GetProperty("created_at").GetString()!, System.Globalization.CultureInfo.InvariantCulture).ToUniversalTime().ToString("yyyy-MM-dd HH:mm:ss UTC", System.Globalization.CultureInfo.InvariantCulture), false);
+            //Request headers
+            client.DefaultRequestHeaders.Add("User-Agent", "THirvola");
+            client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
 
+            //GET
+            HttpResponseMessage resp = await client.GetAsync("https://api.github.com/repos/THirvola/AzureCICDProject/actions/workflows/105888792/runs");
+            string respString = await resp.Content.ReadAsStringAsync();
+
+            //Parsing response
+            Stream responseStream = resp.Content.ReadAsStream();
+            JsonElement jsonRoot = JsonDocument.Parse(responseStream).RootElement;
+            JsonElement latestRun = jsonRoot.GetProperty("workflow_runs")[0];
+            Log("Latest workflow run:", false, true);
+            Log("Number: " + latestRun.GetProperty("run_number").GetInt32(), false);
+            Log("Status: " + latestRun.GetProperty("status").GetString()!, false);
+            Log("Trigger commit: " + latestRun.GetProperty("display_title").GetString()!, false);
+            Log("Updated: " + DateTime.Parse(latestRun.GetProperty("updated_at").GetString()!, System.Globalization.CultureInfo.InvariantCulture).ToUniversalTime().ToString("yyyy-MM-dd HH:mm:ss UTC", System.Globalization.CultureInfo.InvariantCulture), false);
+        } catch
+        {
+            Log("Could not fetch workflow run log", false, true);
+        }
     }
 
     private async Task ChangeNumber()
