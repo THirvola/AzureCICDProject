@@ -120,7 +120,7 @@ There is a 5-minute cooldown on the button.
             return;
         }
 
-        if (previousStatus == "completed")
+        if (previousStatus != "completed")
         {
             Log("The previous workflow has not completed yet.", true, true);
             return;
