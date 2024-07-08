@@ -21,7 +21,7 @@ Pressing the button below will have the following effect:
 <br />
 4. Github will start an automatic build and deployment of the app
 <br />
-5. After about two minutes the deployment is done, and the page will prompt you to refresh
+5. After about two minutes, the deployment is done and the page will prompt you to refresh
 <br />
 
 <br />
@@ -42,6 +42,7 @@ There is a 5-minute cooldown on the button.
     private int currentNumber = -1;
     private MarkupString workflowLog = (MarkupString)"";
     private string workflowLogString = "";
+    private DateTime previousGeneration = DateTime.MinValue;
     private string serverLogString = "";
     private MarkupString serverLog = (MarkupString)"";
     private readonly JsonSerializerOptions jsonOpts = new JsonSerializerOptions()
@@ -81,8 +82,6 @@ There is a 5-minute cooldown on the button.
 
         try
         {
-
-
             //Request headers
             client.DefaultRequestHeaders.Add("User-Agent", "THirvola");
             client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
@@ -99,7 +98,9 @@ There is a 5-minute cooldown on the button.
             Log("Number: " + latestRun.GetProperty("run_number").GetInt32(), false);
             Log("Status: " + latestRun.GetProperty("status").GetString()!, false);
             Log("Trigger commit: " + latestRun.GetProperty("display_title").GetString()!, false);
-            Log("Updated: " + DateTime.Parse(latestRun.GetProperty("updated_at").GetString()!, System.Globalization.CultureInfo.InvariantCulture).ToUniversalTime().ToString("yyyy-MM-dd HH:mm:ss UTC", System.Globalization.CultureInfo.InvariantCulture), false);
+            DateTime latestUpdate = DateTime.Parse(latestRun.GetProperty("updated_at").GetString()!, System.Globalization.CultureInfo.InvariantCulture).ToUniversalTime();
+            previousGeneration = latestUpdate;
+            Log("Updated: " + latestUpdate.ToString("yyyy-MM-dd HH:mm:ss UTC", System.Globalization.CultureInfo.InvariantCulture), false);
         } catch
         {
             Log("Could not fetch workflow run log", false, true);
@@ -109,7 +110,6 @@ There is a 5-minute cooldown on the button.
     private async Task ChangeNumber()
     {
         //checking if it's been 5 minutes yet
-        DateTime previousGeneration = DateTime.Parse(workflowLogString.Substring(0, workflowLogString.Length-4), System.Globalization.CultureInfo.InvariantCulture);
         if (DateTime.UtcNow - previousGeneration < new TimeSpan(0, 5, 0))
         {
             Log("The button is on cooldown until " + previousGeneration.AddMinutes(5).ToString("yyyy-MM-dd HH:mm:ss UTC", System.Globalization.CultureInfo.InvariantCulture), true, true);
@@ -169,7 +169,7 @@ There is a 5-minute cooldown on the button.
                     string newFileContents = fileStart + currentNumber + numberToDate + workflowLogString + endOfFile;
 
                     File.WriteAllText("./SourceForGit/AzureCICDProject/Components/Pages/Home.razor", newFileContents);
-
+                    
                     Log("Setting up git config in the cloned directory");
 
                     CommandResult result = await Cli.Wrap("git").WithArguments("config user.name THirvola").WithWorkingDirectory("./SourceForGit/AzureCICDProject").WithValidation(CommandResultValidation.None).ExecuteAsync();
