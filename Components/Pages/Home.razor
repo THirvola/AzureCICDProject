@@ -3,11 +3,11 @@
 @page "/"
 @rendermode InteractiveServer
 
-<PageTitle>Home</PageTitle>
+<PageTitle>CI/CD demonstration</PageTitle>
 
 <h1>CI/CD demonstration</h1>
 
-This is a simple app to demonstrate Continuous integration/deployment (CI/CD) on a azure server.
+This is a simple app and a practice project to demonstrate continuous integration/deployment (CI/CD) on an azure server.
 <br />
 
 <br/>
@@ -15,20 +15,21 @@ Pressing the button below will have the following effect:
 <br />
 1. Randomize a new number between 1 and 1000
 <br />
-2. Change the value of the number in the source code itself
+2. Change the value of the number in a local copy of the source code itself
 <br />
 3. Commit changes to the page and push that to https://github.com/THirvola/AzureCICDProject
 <br />
-4. Github will start an automatic build and deployment of the app
+4. Github will start a workflow for automatic build and deployment of the app
 <br />
 5. After about two minutes, the deployment is done and the page will prompt you to refresh
 <br />
-
 <br />
 There is a 5-minute cooldown on the button.
 <br />
 
 <h2>Current number: @currentNumber</h2>
+<img src="https://github.com/THirvola/AzureCICDProject/actions/workflows/azure-webapps-dotnet-core.yml/badge.svg" />
+<br />
 <i>@workflowLog</i>
 <br />
 <br />
@@ -39,52 +40,70 @@ There is a 5-minute cooldown on the button.
 <p>Server log: <br/>@serverLog</p>
 
 @code {
-    private int currentNumber = 328;
+    //The const number that can only be changed by changing the source itself
+    private const int currentNumber = 328;
+
+    //Private log variables. String for storing and MarkupString for display
     private MarkupString workflowLog = (MarkupString)"";
     private string workflowLogString = "";
     private DateTime previousGeneration = DateTime.MinValue;
-    private string previousStatus = "completed";
     private string serverLogString = "";
     private MarkupString serverLog = (MarkupString)"";
+    private string previousStatus = "completed";
+
+    //Options for parsing the Github REST API Json
     private readonly JsonSerializerOptions jsonOpts = new JsonSerializerOptions()
         {
             PropertyNameCaseInsensitive = true
         };
 
+    /// <summary>
+    /// Ran automatically on initialization. Only used to update the workflow log
+    /// </summary>
     protected override async Task OnInitializedAsync()
     {
         await UpdateWorkflowLog();
     }
 
+    /// <summary>
+    /// Logs the given line of text.
+    /// </summary>
+    /// <param name="line">The text to write in the log</param>
+    /// <param name="server">True if writing to server log, false if writing to workflow log</param>
+    /// <param name="clear">If this is true, all previous lines in the log will be cleared</param>
     private void Log(string line, bool server = true, bool clear = false)
     {
-        if (line == null)
+        //Do not write empty lines
+        if (line == null || line.Length == 0)
             return;
 
         if (server)
         {
             if (clear)
                 serverLogString = "";
-            serverLogString += line + "<br/>";
+            serverLogString += line + "<br/>"; //Always add a linebreak tag at the end
             serverLog = (MarkupString)serverLogString;
         }
         else
         {
             if (clear)
                 workflowLogString = "";
-            workflowLogString += line + "<br/>";
+            workflowLogString += line + "<br/>"; //Always add a linebreak tag at the end
             workflowLog = (MarkupString)workflowLogString;
         }
     }
 
+    /// <summary>
+    /// Updates the workflow log with the most recent information
+    /// </summary>
     private async Task UpdateWorkflowLog()
     {
-        var client = new HttpClient();
-
         try
         {
+            var client = new HttpClient();
+
             //Request headers
-            client.DefaultRequestHeaders.Add("User-Agent", "THirvola");
+            client.DefaultRequestHeaders.Add("User-Agent", "THirvolaBot");
             client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
 
             //GET
@@ -98,7 +117,11 @@ There is a 5-minute cooldown on the button.
             Log("Latest workflow run:", false, true);
             Log("Number: " + latestRun.GetProperty("run_number").GetInt32(), false);
             previousStatus = latestRun.GetProperty("status").GetString()!;
-            Log("Status: " + previousStatus, false);
+            string? previousConclusion = latestRun.GetProperty("conclusion").GetString();
+            if (previousConclusion == null)
+                Log("Status: " + previousStatus, false);
+            else
+                Log("Status: " + previousStatus + ", " + previousConclusion, false);
             Log("Trigger commit: " + latestRun.GetProperty("display_title").GetString()!, false);
             previousGeneration = DateTime.Parse(latestRun.GetProperty("updated_at").GetString()!, System.Globalization.CultureInfo.InvariantCulture).ToUniversalTime();
             Log("Updated: " + previousGeneration.ToString("yyyy-MM-dd HH:mm:ss UTC", System.Globalization.CultureInfo.InvariantCulture), false);
@@ -108,6 +131,10 @@ There is a 5-minute cooldown on the button.
         }
     }
 
+    /// <summary>
+    /// Changes the number in the local source code and pushes the changes to github.
+    /// There is a slight wait after each logging to have the log flow be more natural.
+    /// </summary>
     private async Task ChangeNumber()
     {
         //Updating latest workflow run information
@@ -120,94 +147,75 @@ There is a 5-minute cooldown on the button.
             return;
         }
 
+        //Checking if there is a workflow run happening right now
         if (previousStatus != "completed")
         {
-            Log("The previous workflow has not completed yet.", true, true);
+            Log("The previous workflow run has not completed yet.", true, true);
             return;
         }
 
         Log("Starting the process", true, true);
+        Thread.Sleep(100);
 
         try
         {
-            //Creating source if it doesn't exist already
+            //Cloning source if it doesn't exist already
             if (!Directory.Exists("./SourceForGit"))
             {
-                Log("Creating new directory for cloning");
+                Log("Cloning the source from https://github.com/THirvola/AzureCICDProject.git");
+                Thread.Sleep(100);
+
                 Directory.CreateDirectory("./SourceForGit");
 
-                Log("Cloning the source from https://github.com/THirvola/AzureCICDProject.git");
-
                 //Cloning the github repository to the source folder
-                CommandResult cloneResult = await Cli.Wrap("git").WithArguments("clone https://github.com/THirvola/AzureCICDProject.git").WithWorkingDirectory("./SourceForGit").WithValidation(CommandResultValidation.None).ExecuteAsync();
-
-                Log("Cloning successful: " + cloneResult.IsSuccess + ", with exit code " + cloneResult.ExitCode);
+                await Cli.Wrap("git").WithArguments("clone https://github.com/THirvola/AzureCICDProject.git").WithWorkingDirectory("./SourceForGit").WithValidation(CommandResultValidation.None).ExecuteAsync();
             }
+            //Pulling latest source if we already have some version
             else
             {
-                Log("Directory for repo exists");
-
                 Log("Pulling latest code");
+                Thread.Sleep(100);
 
-                CommandResult pullResult = await Cli.Wrap("git").WithArguments("pull origin master").WithWorkingDirectory("./SourceForGit/AzureCICDProject").WithValidation(CommandResultValidation.None).ExecuteAsync();
-
-                Log("Pulled latest code with exit code: " + pullResult.ExitCode);
+                await Cli.Wrap("git").WithArguments("pull origin master").WithWorkingDirectory("./SourceForGit/AzureCICDProject").WithValidation(CommandResultValidation.None).ExecuteAsync();
             }
 
             if (File.Exists("./SourceForGit/AzureCICDProject/Components/Pages/Home.razor"))
             {
                 Log("Reading the current source for the page");
+                Thread.Sleep(100);
                 string fileContents = File.ReadAllText("./SourceForGit/AzureCICDProject/Components/Pages/Home.razor");
                 if (fileContents != null && fileContents.Length > 0)
                 {
-                    Log("Generating a new number");
-
                     //Change the number and date locally
-                    currentNumber = System.Random.Shared.Next(1000);
+                    int newNumber = System.Random.Shared.Next(1000);
 
-                    Log("Changing the number in source to " + currentNumber);
+                    Log("Changing the number in source to " + newNumber);
+                    Thread.Sleep(100);
 
                     int currentNumberDefinition = fileContents.IndexOf("currentNumber = ");
                     int endOfLine = fileContents.IndexOf(";", currentNumberDefinition);
 
                     string fileStart = fileContents.Substring(0, currentNumberDefinition + 16);
                     string endOfFile = fileContents.Substring(endOfLine);
-                    string newFileContents = fileStart + currentNumber + endOfFile;
+                    string newFileContents = fileStart + newNumber + endOfFile;
 
                     File.WriteAllText("./SourceForGit/AzureCICDProject/Components/Pages/Home.razor", newFileContents);
                     
-                    Log("Setting up git config in the cloned directory");
+                    Log("Making sure git is properly configured");
+                    Thread.Sleep(100);
 
-                    CommandResult result = await Cli.Wrap("git").WithArguments("config user.name THirvola").WithWorkingDirectory("./SourceForGit/AzureCICDProject").WithValidation(CommandResultValidation.None).ExecuteAsync();
-
-                    Log("Configured user name with exit code " + result.ExitCode);
-
-                    CommandResult result1 = await Cli.Wrap("git").WithArguments("config user.email thirvola@gmail.com").WithWorkingDirectory("./SourceForGit/AzureCICDProject").WithValidation(CommandResultValidation.None).ExecuteAsync();
-
-                    Log("Configured email with exit code " + result1.ExitCode); 
-
-                    CommandResult result2 = await Cli.Wrap("git").WithArguments("add --all").WithWorkingDirectory("./SourceForGit/AzureCICDProject").WithValidation(CommandResultValidation.None).ExecuteAsync();
-
-                    Log("Staged changes with exit code " + result2.ExitCode); 
-
-                    CommandResult result3 = await Cli.Wrap("git").WithArguments(["commit", "-m", "Change number to " + currentNumber]).WithWorkingDirectory("./SourceForGit/AzureCICDProject").WithValidation(CommandResultValidation.None).ExecuteAsync();
-
-                    Log("Committed changes with exit code " + result3.ExitCode);
-
+                    await Cli.Wrap("git").WithArguments("config user.name THirvolaBot").WithWorkingDirectory("./SourceForGit/AzureCICDProject").WithValidation(CommandResultValidation.None).ExecuteAsync();
+                    await Cli.Wrap("git").WithArguments("add --all").WithWorkingDirectory("./SourceForGit/AzureCICDProject").WithValidation(CommandResultValidation.None).ExecuteAsync();
+                    await Cli.Wrap("git").WithArguments(["commit", "-m", "Change number to " + newNumber]).WithWorkingDirectory("./SourceForGit/AzureCICDProject").WithValidation(CommandResultValidation.None).ExecuteAsync();
                     string token = Environment.GetEnvironmentVariable("GIT_TOKEN")!;
-                    CommandResult result4 = await Cli.Wrap("git").WithArguments(["config", "--global", "credential.credentialStore", "dpapi"]).WithWorkingDirectory("./SourceForGit/AzureCICDProject").WithValidation(CommandResultValidation.None).ExecuteAsync();
+                    await Cli.Wrap("git").WithArguments(["config", "--global", "credential.credentialStore", "dpapi"]).WithWorkingDirectory("./SourceForGit/AzureCICDProject").WithValidation(CommandResultValidation.None).ExecuteAsync();
+                    await Cli.Wrap("git").WithArguments(["remote", "set-url", "origin", "https://username:" + token + "@github.com/THirvola/AzureCICDProject.git"]).WithWorkingDirectory("./SourceForGit/AzureCICDProject").WithValidation(CommandResultValidation.None).ExecuteAsync();
 
-                    Log("Set credential config with exit code " + result4.ExitCode);
+                    Log("Pushing changes to Github");
+                    Thread.Sleep(100);
+                    CommandResult pushResult = await Cli.Wrap("git").WithArguments("push origin master").WithWorkingDirectory("./SourceForGit/AzureCICDProject").WithValidation(CommandResultValidation.None).ExecuteAsync();
 
-                    CommandResult result5 = await Cli.Wrap("git").WithArguments(["remote", "set-url", "origin", "https://username:" + token + "@github.com/THirvola/AzureCICDProject.git"]).WithWorkingDirectory("./SourceForGit/AzureCICDProject").WithValidation(CommandResultValidation.None).ExecuteAsync();
-
-                    Log("Set remote with exit code " + result4.ExitCode);
-
-                    CommandResult result6 = await Cli.Wrap("git").WithArguments("push origin master").WithWorkingDirectory("./SourceForGit/AzureCICDProject").WithValidation(CommandResultValidation.None).ExecuteAsync();
-
-                    Log("Pushed to github with exit code " + result6.ExitCode);
-
-                    if (result6.IsSuccess)
+                    if (pushResult.IsSuccess)
                         Log("Successfully pushed to repository");
                     else
                         Log("Failed to push into repository");
