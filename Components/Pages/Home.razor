@@ -137,8 +137,7 @@ There is a 5-minute cooldown on the button.
     /// </summary>
     private async Task ChangeNumber()
     {
-        //Updating latest workflow run information
-        await UpdateWorkflowLog();
+        _ = Task.Run(() => UpdateWorkflowLog());
 
         //checking if it's been 5 minutes yet
         if (DateTime.UtcNow - previousGeneration < new TimeSpan(0, 5, 0))
@@ -216,7 +215,16 @@ There is a 5-minute cooldown on the button.
                     CommandResult pushResult = await Cli.Wrap("git").WithArguments("push origin master").WithWorkingDirectory("./SourceForGit/AzureCICDProject").WithValidation(CommandResultValidation.None).ExecuteAsync();
 
                     if (pushResult.IsSuccess)
+                    {
                         Log("Successfully pushed to repository");
+
+                        //the build & deployment process should take roughly 2 minutes, so the workflow is updated every 10 seconds for 3 minutes
+                        for (int i = 0; i < 18; ++i)
+                        {
+                            Thread.Sleep(10000);
+                            _ = Task.Run(() => UpdateWorkflowLog());
+                        }
+                    }
                     else
                         Log("Failed to push into repository");
                 }
@@ -234,15 +242,6 @@ There is a 5-minute cooldown on the button.
         } catch (Exception e)
         {
             Log("Error: " + e.Message);
-        }
-
-        await UpdateWorkflowLog();
-
-        //the build & deployment process should take roughly 2 minutes, so the workflow is updated every 10 seconds for 3 minutes
-        for (int i = 0; i < 18; ++i)
-        {
-            Thread.Sleep(10000);
-            await UpdateWorkflowLog();
         }
     }
 }
