@@ -123,7 +123,9 @@ There is a 5-minute cooldown on the button.
             else
                 Log("Status: " + previousStatus + ", " + previousConclusion, false);
             Log("Trigger commit: " + latestRun.GetProperty("display_title").GetString()!, false);
-            previousGeneration = DateTime.Parse(latestRun.GetProperty("updated_at").GetString()!, System.Globalization.CultureInfo.InvariantCulture).ToUniversalTime();
+            DateTime previousWorkflow = DateTime.Parse(latestRun.GetProperty("updated_at").GetString()!, System.Globalization.CultureInfo.InvariantCulture).ToUniversalTime();
+            if (previousWorkflow > previousGeneration)
+                previousGeneration = DateTime.Parse(latestRun.GetProperty("updated_at").GetString()!, System.Globalization.CultureInfo.InvariantCulture).ToUniversalTime();
             Log("Updated: " + previousGeneration.ToString("yyyy-MM-dd HH:mm:ss UTC", System.Globalization.CultureInfo.InvariantCulture), false);
         } catch
         {
@@ -217,6 +219,9 @@ There is a 5-minute cooldown on the button.
                     if (pushResult.IsSuccess)
                     {
                         Log("Successfully pushed to repository");
+
+                        //updating the local generation time
+                        previousGeneration = DateTime.UtcNow;
 
                         //the build & deployment process should take roughly 2 minutes, so the workflow is updated every 10 seconds for 3 minutes
                         for (int i = 0; i < 18; ++i)
