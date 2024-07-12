@@ -129,7 +129,7 @@ There is a 5-minute cooldown on the button.
             Log("Updated: " + previousGeneration.ToString("yyyy-MM-dd HH:mm:ss UTC", System.Globalization.CultureInfo.InvariantCulture), false);
         } catch
         {
-            Log("Could not fetch workflow run log", false, true);
+            Log("Could not fetch workflow run log. Possible rate limit exceeding. Try again later.", false, true);
         }
     }
 
@@ -197,10 +197,15 @@ There is a 5-minute cooldown on the button.
 
                     Log("Making sure git is properly configured");
 
-                    await Cli.Wrap("git").WithArguments("config user.name THirvolaBot").WithWorkingDirectory("./SourceForGit/AzureCICDProject").WithValidation(CommandResultValidation.None).ExecuteAsync();
+                    string token = Environment.GetEnvironmentVariable("GIT_TOKEN")!;
+                    string username = Environment.GetEnvironmentVariable("GIT_USERNAME")!;
+                    string email = Environment.GetEnvironmentVariable("GIT_EMAIL")!;
+
+                    await Cli.Wrap("git").WithArguments("config user.email " + email).WithWorkingDirectory("./SourceForGit/AzureCICDProject").WithValidation(CommandResultValidation.None).ExecuteAsync();
+                    await Cli.Wrap("git").WithArguments("config user.name " + username).WithWorkingDirectory("./SourceForGit/AzureCICDProject").WithValidation(CommandResultValidation.None).ExecuteAsync();
                     await Cli.Wrap("git").WithArguments("add --all").WithWorkingDirectory("./SourceForGit/AzureCICDProject").WithValidation(CommandResultValidation.None).ExecuteAsync();
                     await Cli.Wrap("git").WithArguments(["commit", "-m", "Change number to " + newNumber]).WithWorkingDirectory("./SourceForGit/AzureCICDProject").WithValidation(CommandResultValidation.None).ExecuteAsync();
-                    string token = Environment.GetEnvironmentVariable("GIT_TOKEN")!;
+                    
                     await Cli.Wrap("git").WithArguments(["config", "--global", "credential.credentialStore", "dpapi"]).WithWorkingDirectory("./SourceForGit/AzureCICDProject").WithValidation(CommandResultValidation.None).ExecuteAsync();
                     await Cli.Wrap("git").WithArguments(["remote", "set-url", "origin", "https://username:" + token + "@github.com/THirvola/AzureCICDProject.git"]).WithWorkingDirectory("./SourceForGit/AzureCICDProject").WithValidation(CommandResultValidation.None).ExecuteAsync();
 
@@ -210,16 +215,13 @@ There is a 5-minute cooldown on the button.
                     if (pushResult.IsSuccess)
                     {
                         Log("Successfully pushed to repository");
-
+                         
                         //updating the local generation time
                         previousGeneration = DateTime.UtcNow;
                     }
                     else
                     {
                         Log("Failed to push into repository");
-
-                        //updating the local generation time
-                        previousGeneration = DateTime.UtcNow;
                     }
                 }
                 else
