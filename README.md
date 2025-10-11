@@ -1,7 +1,8 @@
 # CI/CD Demonstration project
 ![Workflow badge](https://github.com/THirvola/AzureCICDProject/actions/workflows/azure-webapps-dotnet-core.yml/badge.svg)
 
-Accessible [here](https://cicddemoth.azurewebsites.net/)
+This project is not currently hosted publicly.
+
 ## Background
 This project combines different aspects of a typical web app project such as:
 - CI/CD
